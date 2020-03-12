@@ -6,15 +6,15 @@ Describe 'Get-AnsiblePrereqInfo'{
     Context 'Get-PSVersionInfo'{
         $testCases = @(
             @{
-                psVersion = ([version]"5.3.17763.1007")
+                psVersion = ([version]'5.3.17763.1007')
                 expected = $true
             }
             @{
-                psVersion = ([version]"3.0.5094.45")
+                psVersion = ([version]'3.0.5094.45')
                 expected = $true
             }
             @{
-                psVersion = ([version]"2.0.103.03")
+                psVersion = ([version]'2.0.103.03')
                 expected = $false
             }
             @{
@@ -50,6 +50,7 @@ Describe 'Get-AnsiblePrereqInfo'{
 
         It 'ensures compatibility is <expected> for version <dotNetVersionInfo>' -TestCases $testCases {
            param ($dotNetRegPathExists, $dotNetVersionInfo, $expected)
+
             Mock Test-Path{
                 return $dotNetRegPathExists
             }
@@ -60,27 +61,37 @@ Describe 'Get-AnsiblePrereqInfo'{
            $dotNetVersionInfo.dotnet_compatible | Should -Be $expected
         }
     }
-}
-<#
     Context 'Get-WinRMHotfixStatus'{
-        Mock 'Get-PSVersionInfo'{
-            [PSCustomObject]@{
-                "ps_version_simple" = "5.1"
-                "ps_version_major" = "5"
-                "ps_compatible" = $true
+        function Get-Hotfix {
+            return $winRmHotfix
+        }
+        $testCases = @(
+            @{
+                psVersionInfo = [PSCustomObject]@{ps_version_major = 3}
+                winRmHotfix = $true
+                expected = $true
             }
-        }
-        Get-PSVersionInfo
-        Get-WinRMHotfixStatus $psVersionInfo
-        It 'should not be null'{
+            @{
+                psVersionInfo = [PSCustomObject]@{ps_version_major = 3}
+                winRmHotfix = $null
+                expected = $false
+            }
+            @{
+                psVersionInfo =[PSCustomObject]@{ps_version_major = 5}
+                winRmHotfix = $false
+                expected = $true
+            }
+        )
+        
+        It 'ensures WinRM hotfix status is <expected> for <psVersionInfo> and hotfix object is <winRmHotfix>' -TestCases $testCases {
+            param ($psVersionInfo, $winRmHotfix, $expected)
 
-            $winRmHotfixInfo | Should -Not -Be $null
-        }
-        It 'bool should match expected value'{
-            $winRmHotfixInfo.hotfix_required | Should -Be $false
-            $winRmHotfixInfo.hotfix_installed | Should -Be $false
-            $winRmHotfixInfo.hotfix_status_ok | Should -Be $true
+            $hotfixId = "KB2842230"
+            Mock Get-Hotfix{
+                return $winRmHotfix
+            }
+            $winRmHotfixStatus = Get-WinRMHotfixStatus $psVersionInfo
+            $winRmHotfixStatus.hotfix_status_ok | Should -Be $expected
         }
     }
 }
-#>
