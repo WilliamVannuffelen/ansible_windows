@@ -128,7 +128,7 @@ Describe 'Get-AnsiblePrereqInfo'{
             Mock Get-Hotfix{
                 return $winRmHotfix
             }
-            $winRmHotfixInfo = Get-WinRMHotfixStatus $psVersionInfo
+            $winRmHotfixInfo = Get-WinRMHotfixInfo $psVersionInfo
             $winRmHotfixInfo.hotfix_status_ok | Should -Be $expected
         }
     }
