@@ -11,19 +11,22 @@ pool:
 
 steps:
 - task: PowerShell@2
+  displayname: 'Invoke Pester unit and code coverage testing'
   inputs:
     filePath: 'Invoke-PesterTests.ps1'
     pwsh: false
 
 - task: PublishTestResults@2
+  displayname: 'Publish NUnit test results'
   inputs:
     testResultsFormat: 'NUnit'
-    testResultsFiles: '**/pester_test_*.xml'
+    testResultsFiles: '$(System.DefaultWorkingDirectory)/pester_test_*.xml'
     failTaskOnFailedTests: true
 
 - task: PublishCodeCoverageResults@1
+  displayname: 'Publish JaCoCo code coverage results'
   inputs:
-    summaryFileLocation: '**/pester_coverage_*.xml'
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)/pester_coverage_*.xml'
     pathToSources: '$(System.DefaultWorkingDirectory)'
     codeCoverageTool: 'JaCoCo'
     failIfCoverageEmpty: true
