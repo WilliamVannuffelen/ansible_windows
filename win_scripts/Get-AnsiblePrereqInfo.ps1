@@ -1,3 +1,37 @@
+
+
+function Get-OSVersionInfo{
+    $osVersionInfo = Get-WMIObject -Class Win32_OperatingSystem
+    
+    $osVersionInfo = $osVersionInfo |
+        Select-Object   @{Name="os_version_name";       Expression={$_.caption}},
+                        @{Name="os_version";            Expression={$_.version}},
+                        @{Name="os_sp_version";         Expression={$_.servicePackMajorVersion}},
+                        @{Name="os_compatible";         Expression={
+                            # windows server 2008 --> needs SP 2
+                            if($_.version.StartsWith('6.0')){
+                                switch ($_.servicePackMajorVersion){
+                                    {$_ -eq 2} {$true}
+                                    default {$false}
+                                    }
+                                }
+                            # windows 7 or server 2008 r2 --> needs SP 1
+                            elseif($_.version.StartsWith('6.1')){
+                                switch ($_.servicePackMajorVersion){
+                                    {$_ -eq 1} {$true}
+                                    default {$false}
+                                    }
+                                }
+                            # everything newer: meets requirements
+                            else{
+                                $true
+                                }
+                            }}
+    return $osVersionInfo
+}
+
+
+
 function Get-PSVersion{
     $psVersion = $psVersionTable.psVersion
     return $psVersion
@@ -14,7 +48,6 @@ function Get-PSVersionInfo($psVersion){
                         }
                     }}
     return $psVersionInfo
-
 }
 
 # check .NET version
@@ -46,9 +79,9 @@ function Get-DotNetVersionInfo{
     return $dotNetVersionInfo
 }
 
-# if PS 3.0, check WinRM memory hotfix KB2842230
-function Get-WinRMHotfixStatus($psVersionInfo){
-    # skip if PS version > 3
+# if PS 3.0, check that WinRM memory hotfix KB2842230 is installed
+function Get-WinRMHotfixInfo($psVersionInfo){
+    # skip KB check if PS version > 3
     if($psVersionInfo.ps_version_major -ne 3){
         $winRmHotfixInfo = [PSCustomObject]@{
             'hotfix_required'   = $false
@@ -78,9 +111,8 @@ function Get-WinRMHotfixStatus($psVersionInfo){
     return $winRmHotfixInfo
 }
 
+$osVersionInfo = Get-OSVersionInfo
 $psVersion = Get-PSVersion
 $psVersionInfo = Get-PSVersionInfo $psVersion
 $dotNetVersionInfo = Get-DotNetVersionInfo
-#$winrmhotfixinfo = get-winrmhotfixstatus $psversioninfo
-
-write-host "test"
+$winRmHotfixInfo = Get-WinRMHotfixInfo $psVersionInfo
