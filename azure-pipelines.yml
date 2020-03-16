@@ -24,6 +24,6 @@ steps:
 - task: PublishCodeCoverageResults@1
   inputs:
     summaryFileLocation: '**/pester_coverage_*.xml'
-    pathToSources: '$(System.DefaultWorkingDirectory)/ansible_windows/'
+    pathToSources: '$(System.DefaultWorkingDirectory)'
     codeCoverageTool: 'JaCoCo'
     failIfCoverageEmpty: true
