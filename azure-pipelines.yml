@@ -19,4 +19,8 @@ steps:
   inputs:
     testResultsFormat: 'NUnit'
     testResultsFiles: '**/TEST-*.xml'
+<<<<<<< HEAD
     failTaskonFailedTests: true
+=======
+    failTaskonFailedTests: true
+>>>>>>> 3845d86d564769569ddbe4e6992f5d271552dd22
