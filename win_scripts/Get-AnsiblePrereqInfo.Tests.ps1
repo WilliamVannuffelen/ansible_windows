@@ -3,6 +3,45 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.", ".")
 . "$here\$sut"
 
 Describe 'Get-AnsiblePrereqInfo'{
+    Context 'Get-OSVersionInfo'{
+        $testCases = @(
+            @{
+                osWmiObject = [PSCustomObject]@{
+                    caption = 'Microsoft Windows Server 2012 Standard'
+                    version = '6.2.9200'
+                    servicePackMajorVersion = 0
+                }
+                expected = $true
+            }
+            @{
+                osWmiObject = [PSCustomObject]@{
+                    caption = 'Microsoft Windows Server 2008 R2 Standard'
+                    version = '6.1.7601'
+                    servicePackMajorVersion = 1
+                }
+                expected = $true
+            }
+            @{
+                osWmiObject = [PSCustomObject]@{
+                    caption = 'Windows Server 2008 Standard without Hyper-V'
+                    version = '6.0.0001'
+                    servicePackMajorVersion = 1
+                }
+                expected = $false
+            }
+        )
+
+        It 'ensures OS compatibility is <expected> for OS <osWmiObject>' -TestCases $testCases {
+            param ($osWmiObject, $expected)
+
+            Mock Get-WMIObject {
+                return $osWmiObject
+            }
+
+            $osVersionInfo = Get-OSVersionInfo
+            $osVersionInfo.os_compatible | Should -Be $expected
+        }
+    }
     Context 'Get-PSVersionInfo'{
         $testCases = @(
             @{
@@ -23,7 +62,7 @@ Describe 'Get-AnsiblePrereqInfo'{
             }
         )
 
-        It 'ensures compatibility is <expected> for version <psVersion>' -TestCases $testCases {
+        It 'ensures PS compatibility is <expected> for version <psVersion>' -TestCases $testCases {
             param ($psVersion, $expected)
 
             $psVersionInfo = Get-PSVersionInfo $psVersion
@@ -61,7 +100,7 @@ Describe 'Get-AnsiblePrereqInfo'{
            $dotNetVersionInfo.dotnet_compatible | Should -Be $expected
         }
     }
-    Context 'Get-WinRMHotfixStatus'{
+    Context 'Get-WinRMHotfixInfo'{
         function Get-Hotfix {
             return $winRmHotfix
         }
@@ -86,12 +125,13 @@ Describe 'Get-AnsiblePrereqInfo'{
         It 'ensures WinRM hotfix status is <expected> for <psVersionInfo> and hotfix object is <winRmHotfix>' -TestCases $testCases {
             param ($psVersionInfo, $winRmHotfix, $expected)
 
-            $hotfixId = "KB2842230"
             Mock Get-Hotfix{
                 return $winRmHotfix
             }
-            $winRmHotfixStatus = Get-WinRMHotfixStatus $psVersionInfo
-            $winRmHotfixStatus.hotfix_status_ok | Should -Be $expected
+            $winRmHotfixInfo = Get-WinRMHotfixStatus $psVersionInfo
+            $winRmHotfixInfo.hotfix_status_ok | Should -Be $expected
         }
     }
+
+
 }
