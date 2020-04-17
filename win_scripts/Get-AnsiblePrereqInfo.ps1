@@ -54,24 +54,55 @@ function Get-OSVersionInfo{
     return $osVersionInfo, $logData
 }
 
+function Get-PSVersionInfo{
+    [cmdletBinding()]
+    param(
+        [object] $psSession,
+        [string] $computerName
+    )
+    $logData = New-Object System.Collections.ArrayList
 
+    try{
+        $psVersion = Invoke-Command -Session $psSession -ScriptBlock {$psVersionTable.psVersion} -ErrorAction Stop
+        [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Queried PS version table.")
+    }
+    catch{
+        [void]$logData.Add("$(Get-Timestamp) ERROR: $computerName - Failed to query PS version table.")
+        [void]$logData.Add($_.Exception.Message)
 
-function Get-PSVersion{
-    $psVersion = $psVersionTable.psVersion
-    return $psVersion
-}
-# check PS version
-function Get-PSVersionInfo($psVersion){
+        # if error in query, report
+        $psVersionInfo = [PSCustomObject]@{
+            ps_version_simple = 'unknown'
+            ps_version_major = 'unknown'
+            ps_compatible = 'unknown'
+            }
+        return $psVersionInfo, $logData
+    }
+
+    # if no error in query, but nothing returned -> PS is outdated
+    if($null -eq $psVersion){
+        $psVersionInfo = [PSCustomObject]@{
+            ps_version_simple = '1.0'
+            ps_version_major = 1
+            ps_compatible = $false
+        }
+        [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - psVersionTable does not exist. Outdated Powershell version.")
+
+        return $psVersionInfo, $logData
+    }
+
     $psVersionInfo = $psVersion |
-    Select-Object   @{Name="ps_version_simple";     Expression={"$($_.major).$($_.minor)"}},
-                    @{Name="ps_version_major";      Expression={$_.major}},
-                    @{Name="ps_compatible";         Expression={
-                        switch ($_.major){
-                            {@(3,4,5) -contains $_} {$true}
-                            default {$false}
-                        }
-                    }}
-    return $psVersionInfo
+        Select-Object   @{Name="ps_version_simple";     Expression={"$($_.major).$($_.minor)"}},
+                        @{Name="ps_version_major";      Expression={$_.major}},
+                        @{Name="ps_compatible";         Expression={
+                            switch ($_.major){
+                                {@(3,4,5) -contains $_} {$true}
+                                default {$false}
+                            }
+                        }}
+    [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - psVersionTable exists. Performed standard version check.")
+    
+    return $psVersionInfo, $logData
 }
 
 # check .NET version
@@ -136,7 +167,7 @@ function Get-WinRMHotfixInfo($psVersionInfo){
 }
 
 $osVersionInfo, $logData = Get-OSVersionInfo
-$psVersion = Get-PSVersion
-$psVersionInfo = Get-PSVersionInfo $psVersion
+#$psVersion = Get-PSVersion
+$psVersionInfo, $logData = Get-PSVersionInfo $psVersion
 $dotNetVersionInfo = Get-DotNetVersionInfo
 $winRmHotfixInfo = Get-WinRMHotfixInfo $psVersionInfo

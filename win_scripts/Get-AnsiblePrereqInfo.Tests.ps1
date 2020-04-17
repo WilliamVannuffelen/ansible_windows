@@ -69,32 +69,62 @@ Describe 'Get-AnsiblePrereqInfo'{
         }
     }
     Context 'Get-PSVersionInfo'{
+        function Invoke-Command {
+            return $psVersionInfo
+        }
         $testCases = @(
             @{
                 psVersion = ([version]'5.3.17763.1007')
+                errorState = $false
                 expected = $true
             }
             @{
                 psVersion = ([version]'3.0.5094.45')
+                errorState = $false
                 expected = $true
             }
             @{
                 psVersion = ([version]'2.0.103.03')
+                errorState = $false
                 expected = $false
             }
             @{
                 psVersion = $null
-                expected = $null
+                errorState = $false
+                expected = $false
+            }
+            @{
+                psVersion = $null
+                errorState = $true
+                expected = 'unknown'
             }
         )
 
-        It 'ensures PS compatibility is <expected> for version <psVersion>' -TestCases $testCases {
-            param ($psVersion, $expected)
+        It 'ensures PS compatibility is <expected> for version <psVersion> and error state is <errorState>' -TestCases $testCases {
+            param ($psVersion, $errorState, $expected)
 
-            $psVersionInfo = Get-PSVersionInfo $psVersion
+            if($errorState){
+                Mock Invoke-Command {
+                    throw
+                }
+            }
+            else{
+                Mock Invoke-Command {
+                    return $psVersion
+                }
+            }
+
+            $psVersionInfo, $logData = Get-PSVersionInfo
             $psVersionInfo.ps_compatible | Should -Be $expected
         }
 
+        It 'ensures logData is an arrayList of strings when execution error state is <errorState>' -TestCases $testCases[0,3,4] {
+            param ($psVersion, $errorState)
+
+            $psVersionInfo, $logData = Get-OSVersionInfo
+            ,$logData | Should -BeOfType [System.Collections.ArrayList]
+            $logData | Should -BeOfType [string]
+        }
     }
     Context 'Get-DotNetVersionInfo'{
         $testCases = @(
