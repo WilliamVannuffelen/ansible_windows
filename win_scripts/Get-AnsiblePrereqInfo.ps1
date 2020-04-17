@@ -1,9 +1,11 @@
-
+function Get-TimeStamp {
+    return Get-Date -f "yyyy-MM-dd HH:mm:ss -"
+}
 
 function Get-OSVersionInfo{
     [cmdletBinding()]
     param(
-        [psSession] $psSession,
+        [object] $psSession,
         [string] $computerName
     )
     $logData = New-Object System.Collections.ArrayList
