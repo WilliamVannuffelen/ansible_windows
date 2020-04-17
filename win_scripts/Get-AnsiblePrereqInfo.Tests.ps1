@@ -11,6 +11,7 @@ Describe 'Get-AnsiblePrereqInfo'{
                     version = '6.2.9200'
                     servicePackMajorVersion = 0
                 }
+                errorState = $false
                 expected = $true
             }
             @{
@@ -19,6 +20,7 @@ Describe 'Get-AnsiblePrereqInfo'{
                     version = '6.1.7601'
                     servicePackMajorVersion = 1
                 }
+                errorState = $false
                 expected = $true
             }
             @{
@@ -27,19 +29,40 @@ Describe 'Get-AnsiblePrereqInfo'{
                     version = '6.0.0001'
                     servicePackMajorVersion = 1
                 }
+                errorState = $false
                 expected = $false
+            }
+            @{
+                osWmiObject = $null
+                errorState = $true
+                expected = 'unknown'
             }
         )
 
-        It 'ensures OS compatibility is <expected> for OS <osWmiObject>' -TestCases $testCases {
-            param ($osWmiObject, $expected)
+        It 'ensures OS compatibility is <expected> for OS <osWmiObject> and execution error state is <errorState>' -TestCases $testCases {
+            param ($osWmiObject, $errorState, $expected)
 
-            Mock Get-WMIObject {
-                return $osWmiObject
+            if($errorState){
+                Mock Invoke-Command {
+                    throw
+                }
+            }
+            else{
+                Mock Invoke-Command {
+                    return $osWmiObject
+                }
             }
 
             $osVersionInfo = Get-OSVersionInfo
             $osVersionInfo.os_compatible | Should -Be $expected
+        }
+
+        It 'ensures logData is an arrayList of strings when execution error state is <errorState>' -TestCases $testCases[0,3] {
+            param ($osWmiObject, $errorState)
+
+            $osVersionInfo, $logData = Get-OSVersionInfo
+            ,$logData | Should -BeOfType [System.Collections.ArrayList]
+            $logData | Should -BeOfType [string]
         }
     }
     Context 'Get-PSVersionInfo'{

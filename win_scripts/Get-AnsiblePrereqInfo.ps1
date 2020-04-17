@@ -1,7 +1,29 @@
 
 
 function Get-OSVersionInfo{
-    $osVersionInfo = Get-WMIObject -Class Win32_OperatingSystem
+    [cmdletBinding()]
+    param(
+        [psSession] $psSession,
+        [string] $computerName
+    )
+    $logData = New-Object System.Collections.ArrayList
+
+    try{
+        $osVersionInfo = Invoke-Command -Session $psSession -ScriptBlock {Get-WMIObject -Class Win32_OperatingSystem} -ErrorAction Stop
+        [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Queried Win32_OperatingSystem.")
+    }
+    catch{
+        [void]$logData.Add("$(Get-Timestamp) ERROR: $computerName - Failed to query Win32_OperatingSystem.")
+        [void]$logData.Add($_.Exception.Message)
+
+        $osVersionInfo = [PSCustomObject]@{
+            os_version_name = 'unknown'
+            os_version = 'unknown'
+            os_sp_version = 'unknown'
+            os_compatible = 'unknown'
+        }
+        return $osVersionInfo, $logData
+    }
     
     $osVersionInfo = $osVersionInfo |
         Select-Object   @{Name="os_version_name";       Expression={$_.caption}},
@@ -27,7 +49,7 @@ function Get-OSVersionInfo{
                                 $true
                                 }
                             }}
-    return $osVersionInfo
+    return $osVersionInfo, $logData
 }
 
 
@@ -111,7 +133,7 @@ function Get-WinRMHotfixInfo($psVersionInfo){
     return $winRmHotfixInfo
 }
 
-$osVersionInfo = Get-OSVersionInfo
+$osVersionInfo, $logData = Get-OSVersionInfo
 $psVersion = Get-PSVersion
 $psVersionInfo = Get-PSVersionInfo $psVersion
 $dotNetVersionInfo = Get-DotNetVersionInfo
