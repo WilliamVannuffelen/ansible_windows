@@ -11,7 +11,7 @@ function Get-OSVersionInfo{
     $logData = New-Object System.Collections.ArrayList
 
     try{
-        $osVersionInfo = Invoke-Command -Session $psSession -ScriptBlock {Get-WMIObject -Class Win32_OperatingSystem} -ErrorAction Stop
+        $osWmiObject = Invoke-Command -Session $psSession -ScriptBlock {Get-WMIObject -Class Win32_OperatingSystem} -ErrorAction Stop
         [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Queried Win32_OperatingSystem.")
     }
     catch{
@@ -27,7 +27,7 @@ function Get-OSVersionInfo{
         return $osVersionInfo, $logData
     }
     
-    $osVersionInfo = $osVersionInfo |
+    $osVersionInfo = $osWmiObject |
         Select-Object   @{Name="os_version_name";       Expression={$_.caption}},
                         @{Name="os_version";            Expression={$_.version}},
                         @{Name="os_sp_version";         Expression={$_.servicePackMajorVersion}},
