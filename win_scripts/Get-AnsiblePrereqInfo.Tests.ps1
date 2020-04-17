@@ -4,6 +4,9 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".Tests.", ".")
 
 Describe 'Get-AnsiblePrereqInfo'{
     Context 'Get-OSVersionInfo'{
+        function Invoke-Command {
+            return $osVersionInfo
+        }
         $testCases = @(
             @{
                 osWmiObject = [PSCustomObject]@{
