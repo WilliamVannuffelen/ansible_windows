@@ -14,7 +14,7 @@ Describe 'Get-AnsiblePrereqInfo'{
                     version = '6.2.9200'
                     servicePackMajorVersion = 0
                 }
-                errorState = $false
+                invocationError = $false
                 expected = $true
             }
             @{
@@ -23,7 +23,7 @@ Describe 'Get-AnsiblePrereqInfo'{
                     version = '6.1.7601'
                     servicePackMajorVersion = 1
                 }
-                errorState = $false
+                invocationError = $false
                 expected = $true
             }
             @{
@@ -32,20 +32,20 @@ Describe 'Get-AnsiblePrereqInfo'{
                     version = '6.0.0001'
                     servicePackMajorVersion = 1
                 }
-                errorState = $false
+                invocationError = $false
                 expected = $false
             }
             @{
                 osWmiObject = $null
-                errorState = $true
+                invocationError = $true
                 expected = 'unknown'
             }
         )
 
-        It 'ensures OS compatibility is <expected> for OS <osWmiObject> and execution error state is <errorState>' -TestCases $testCases {
-            param ($osWmiObject, $errorState, $expected)
+        It 'ensures OS compatibility is <expected> for OS <osWmiObject> and invocation error state is <invocationError>' -TestCases $testCases {
+            param ($osWmiObject, $invocationError, $expected)
 
-            if($errorState){
+            if($invocationError){
                 Mock Invoke-Command {
                     throw
                 }
@@ -60,8 +60,8 @@ Describe 'Get-AnsiblePrereqInfo'{
             $osVersionInfo.os_compatible | Should -Be $expected
         }
 
-        It 'ensures logData is an arrayList of strings when execution error state is <errorState>' -TestCases $testCases[0,3] {
-            param ($osWmiObject, $errorState)
+        It 'ensures logData is an arrayList of strings when invocation error state is <invocationError>' -TestCases $testCases[0,3] {
+            param ($osWmiObject, $invocationError)
 
             $osVersionInfo, $logData = Get-OSVersionInfo
             ,$logData | Should -BeOfType [System.Collections.ArrayList]
@@ -75,35 +75,35 @@ Describe 'Get-AnsiblePrereqInfo'{
         $testCases = @(
             @{
                 psVersion = ([version]'5.3.17763.1007')
-                errorState = $false
+                invocationError = $false
                 expected = $true
             }
             @{
                 psVersion = ([version]'3.0.5094.45')
-                errorState = $false
+                invocationError = $false
                 expected = $true
             }
             @{
                 psVersion = ([version]'2.0.103.03')
-                errorState = $false
+                invocationError = $false
                 expected = $false
             }
             @{
                 psVersion = $null
-                errorState = $false
+                invocationError = $false
                 expected = $false
             }
             @{
                 psVersion = $null
-                errorState = $true
+                invocationError = $true
                 expected = 'unknown'
             }
         )
 
-        It 'ensures PS compatibility is <expected> for version <psVersion> and error state is <errorState>' -TestCases $testCases {
-            param ($psVersion, $errorState, $expected)
+        It 'ensures PS compatibility is <expected> for version <psVersion> and invocation error state is <invocationError>' -TestCases $testCases {
+            param ($psVersion, $invocationError, $expected)
 
-            if($errorState){
+            if($invocationError){
                 Mock Invoke-Command {
                     throw
                 }
@@ -118,8 +118,8 @@ Describe 'Get-AnsiblePrereqInfo'{
             $psVersionInfo.ps_compatible | Should -Be $expected
         }
 
-        It 'ensures logData is an arrayList of strings when execution error state is <errorState>' -TestCases $testCases[0,3,4] {
-            param ($psVersion, $errorState)
+        It 'ensures logData is an arrayList of strings when invocation error state is <invocationError>' -TestCases $testCases[0,3,4] {
+            param ($psVersion, $invocationError)
 
             $psVersionInfo, $logData = Get-OSVersionInfo
             ,$logData | Should -BeOfType [System.Collections.ArrayList]
@@ -127,33 +127,62 @@ Describe 'Get-AnsiblePrereqInfo'{
         }
     }
     Context 'Get-DotNetVersionInfo'{
+        function Invoke-Command {
+            return $dotNetVersion
+        }
         $testCases = @(
             @{
-                dotNetRegPathExists = $false
-                dotNetVersionInfo = $null
+                dotNetVersion = $null
+                invocationError = $false
                 expected = $false
             }
             @{
-                dotNetRegPathExists = $true
-                dotNetVersionInfo = [PSCustomObject]@{
+                dotNetVersion = [PSCustomObject]@{
                     version = ([version]"4.7.03190")
                     release = 461814
                 }
+                invocationError = $false
                 expected = $true
+            }
+            @{
+                dotNetVersion = [PSCustomObject]@{
+                    version = ([version]"4.7.03190")
+                    release = 461814
+                }
+                invocationError = $true
+                expected = 'unknown'
             }
         )
 
-        It 'ensures compatibility is <expected> for version <dotNetVersionInfo>' -TestCases $testCases {
-           param ($dotNetRegPathExists, $dotNetVersionInfo, $expected)
+        It 'ensures compatibility is <expected> for version <dotNetVersion> and invocation error state is <invocationError>' -TestCases $testCases {
+           param ($dotNetVersion, $invocationError, $expected)
 
-            Mock Test-Path{
-                return $dotNetRegPathExists
+           if($invocationError){
+                Mock Invoke-Command {
+                    throw
+                }
             }
-            Mock Get-ItemProperty{
-                return $dotNetVersionInfo
+            elseif($null -eq $dotNetVersion){
+                $exception = New-Object System.Management.Automation.ItemNotFoundException
+                Mock Invoke-Command {
+                    throw $exception
+                }
             }
-           $dotNetVersionInfo = Get-DotNetVersionInfo
+            else{
+                Mock Invoke-Command {
+                    return $dotNetVersion
+                }
+            }
+           $dotNetVersionInfo, $logData = Get-DotNetVersionInfo
            $dotNetVersionInfo.dotnet_compatible | Should -Be $expected
+        }
+
+        It 'ensures logData is an arrayList of strings when invocation error state is <invocationError>' -TestCases $testCases {
+            param ($dotNetVersionInfo, $invocationError)
+
+            $dotNetVersionInfo, $logData = Get-DotNetVersionInfo
+            ,$logData | Should -BeOfType [System.Collections.ArrayList]
+            $logData | Should -BeOfType [string]
         }
     }
     Context 'Get-WinRMHotfixInfo'{

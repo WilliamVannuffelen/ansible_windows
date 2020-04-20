@@ -107,31 +107,53 @@ function Get-PSVersionInfo{
 
 # check .NET version
 function Get-DotNetVersionInfo{
+    [cmdletBinding()]
+    param(
+        [object] $psSession,
+        [string] $computerName
+    )
+    $logData = New-Object System.Collections.ArrayList
+
+
     $dotNetRegPath = "HKLM:\Software\Microsoft\Net Framework Setup\NDP\v4\Full"
     $dotNetMinRelease = 379893 # 4.5.2
-    $dotNetRegPathExists = Test-Path -Path $dotNetRegPath
+    try{
+        $dotNetVersion = Invoke-Command -Session $psSession -ScriptBlock {Get-ItemProperty -Path $using:dotNetRegPath -ErrorAction Stop} -ErrorAction Stop
+        [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Queried registry for .NET version info.")
+    }
+    catch [System.Management.Automation.ItemNotFoundException] {
+        [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Registry path does not exist, missing or outdated .NET version.")
 
-    if(-not $dotNetRegPathExists){
         $dotNetVersionInfo = [PSCustomObject]@{
-            "dotnet_version" = "n/a"
-            "dotnet_release" = "n/a"
-            "dotnet_compatible" = $false
+            dotnet_version = 'n/a'
+            dotnet_release = 'n/a'
+            dotnet_compatible = $false
         }
+        return $dotNetVersionInfo, $logData
     }
-    else{
-        $dotNetVersionInfo = Get-ItemProperty -Path $dotNetRegPath
+    catch{
+        [void]$logData.Add("$(Get-Timestamp) ERROR: $computerName - Failed to query registry for .NET version info.")
+        [void]$logData.Add($_.Exception.Message)
 
-        $dotNetVersionInfo = $dotNetVersionInfo |
-            Select-Object   @{Name="dotnet_version";    Expression={$_.version}},
-                            @{Name="dotnet_release";    Expression={$_.release}},
-                            @{Name="dotnet_compatible"; Expression={
-                                switch ($_.release){
-                                    {$_ -ge $dotNetMinRelease} {$true}
-                                    default {$false}
-                                }
-                            }}
+        $dotNetVersionInfo = [PSCustomObject]@{
+            dotnet_version = 'unknown'
+            dotnet_release = 'unknown'
+            dotnet_compatible = 'unknown'
+        }
+        return $dotNetVersionInfo, $logData
     }
-    return $dotNetVersionInfo
+
+    $dotNetVersionInfo = $dotNetVersion |
+        Select-Object   @{Name="dotnet_version";    Expression={$_.version}},
+                        @{Name="dotnet_release";    Expression={$_.release}},
+                        @{Name="dotnet_compatible"; Expression={
+                            switch ($_.release){
+                                {$_ -ge $dotNetMinRelease} {$true}
+                                default {$false}
+                            }
+                        }}
+
+    return $dotNetVersionInfo, $logData
 }
 
 # if PS 3.0, check that WinRM memory hotfix KB2842230 is installed
