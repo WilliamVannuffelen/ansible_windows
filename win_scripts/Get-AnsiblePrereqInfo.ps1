@@ -11,7 +11,7 @@ function Get-OSVersionInfo{
     $logData = New-Object System.Collections.ArrayList
 
     try{
-        $osWmiObject = Invoke-Command -Session $psSession -ScriptBlock {Get-WMIObject -Class Win32_OperatingSystem} -ErrorAction Stop
+        $osWmiObject = Invoke-Command -Session $psSession -ScriptBlock {Get-WMIObject -Class Win32_OperatingSystem -ErrorAction Stop} -ErrorAction Stop
         [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Queried Win32_OperatingSystem.")
     }
     catch{
@@ -157,39 +157,64 @@ function Get-DotNetVersionInfo{
 }
 
 # if PS 3.0, check that WinRM memory hotfix KB2842230 is installed
-function Get-WinRMHotfixInfo($psVersionInfo){
+function Get-WinRmHotfixInfo{
+    [cmdletBinding()]
+    param(
+        [object] $psSession,
+        [object] $psVersionInfo,
+        [string] $computerName
+    )
+    $logData = New-Object System.Collections.ArrayList
+    
     # skip KB check if PS version > 3
     if($psVersionInfo.ps_version_major -ne 3){
         $winRmHotfixInfo = [PSCustomObject]@{
-            'hotfix_required'   = $false
-            'hotfix_installed'  = $false
-            'hotfix_status_ok'  = $true
+            hotfix_required   = $false
+            hotfix_installed  = $false
+            hotfix_status_ok  = $true
         }
+        [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - PS version is not 3 - skipping KB check.")
+
+        return $winRmHotfixInfo, $logData
     }
     else{
-        $winRmHotfix = Get-Hotfix -HotfixId "KB2842230" -ErrorAction SilentlyContinue
+        try{
+            $hotfixList = Invoke-Command -Session $psSession -ScriptBlock {Get-CimInstance -ClassName Win32_QuickFixEngineering -ErrorAction Stop} -ErrorAction Stop
+            [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Queried Win32_QuickFixEngineering.")
+        }
+        catch{
+            [void]$logData.Add("$(Get-Timestamp) ERROR: $computerName - Failed to query Win32_QuickFixEngineering.")
+            [void]$logData.Add($_.Exception.Message)
 
-        if($null -eq $winRmHotfix){
-            $winRmHotfixInstalled = $false
-            $winRmHotfixStatus = $false
+            $winRmHotfixInfo = [PSCustomObject]@{
+                hotfix_required = $true
+                hotfix_installed = 'unknown'
+                hotfix_status_ok = 'unknown'
+            }
+
+            return $winRmHotfixInfo, $logData
+        }
+
+        if($hotfixList.hotfixId -contains 'KB2842230'){
+            $winRmHotfixInstalled = $true
+            $winRmHotfixOk = $true
         }
         else{
-            $winRmHotfixInstalled = $true
-            $winRmHotfixStatus = $true
+            $winRmHotfixInstalled = $false
+            $winRmHotfixOk = $false
         }
 
         $winRmHotfixInfo = [PSCustomObject]@{
-            'hotfix_required'   = $true
-            'hotfix_installed'  = $winRmHotfixInstalled
-            'hotfix_status_ok'  = $winRmHotfixStatus
+            hotfix_required   = $true
+            hotfix_installed  = $winRmHotfixInstalled
+            hotfix_status_ok  = $winRmHotfixOk
         }
     }
 
-    return $winRmHotfixInfo
+    return $winRmHotfixInfo, $logData
 }
 
 $osVersionInfo, $logData = Get-OSVersionInfo
-#$psVersion = Get-PSVersion
 $psVersionInfo, $logData = Get-PSVersionInfo $psVersion
-$dotNetVersionInfo = Get-DotNetVersionInfo
-$winRmHotfixInfo = Get-WinRMHotfixInfo $psVersionInfo
+$dotNetVersionInfo, $logData = Get-DotNetVersionInfo
+$winRmHotfixInfo, $logData = Get-WinRMHotfixInfo $psVersionInfo

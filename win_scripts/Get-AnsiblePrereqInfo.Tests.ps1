@@ -63,6 +63,17 @@ Describe 'Get-AnsiblePrereqInfo'{
         It 'ensures logData is an arrayList of strings when invocation error state is <invocationError>' -TestCases $testCases[0,3] {
             param ($osWmiObject, $invocationError)
 
+            if($invocationError){
+                Mock Invoke-Command {
+                    throw
+                }
+            }
+            else{
+                Mock Invoke-Command {
+                    return $osWmiObject
+                }
+            }
+            
             $osVersionInfo, $logData = Get-OSVersionInfo
             ,$logData | Should -BeOfType [System.Collections.ArrayList]
             $logData | Should -BeOfType [string]
@@ -70,7 +81,7 @@ Describe 'Get-AnsiblePrereqInfo'{
     }
     Context 'Get-PSVersionInfo'{
         function Invoke-Command {
-            return $psVersionInfo
+            return $psVersion
         }
         $testCases = @(
             @{
@@ -121,7 +132,18 @@ Describe 'Get-AnsiblePrereqInfo'{
         It 'ensures logData is an arrayList of strings when invocation error state is <invocationError>' -TestCases $testCases[0,3,4] {
             param ($psVersion, $invocationError)
 
-            $psVersionInfo, $logData = Get-OSVersionInfo
+            if($invocationError){
+                Mock Invoke-Command {
+                    throw
+                }
+            }
+            else{
+                Mock Invoke-Command {
+                    return $psVersion
+                }
+            }
+
+            $psVersionInfo, $logData = Get-PSVersionInfo
             ,$logData | Should -BeOfType [System.Collections.ArrayList]
             $logData | Should -BeOfType [string]
         }
@@ -180,43 +202,103 @@ Describe 'Get-AnsiblePrereqInfo'{
         It 'ensures logData is an arrayList of strings when invocation error state is <invocationError>' -TestCases $testCases {
             param ($dotNetVersionInfo, $invocationError)
 
+            if($invocationError){
+                Mock Invoke-Command {
+                    throw
+                }
+            }
+            elseif($null -eq $dotNetVersion){
+                $exception = New-Object System.Management.Automation.ItemNotFoundException
+                Mock Invoke-Command {
+                    throw $exception
+                }
+            }
+            else{
+                Mock Invoke-Command {
+                    return $dotNetVersion
+                }
+            }
+
             $dotNetVersionInfo, $logData = Get-DotNetVersionInfo
             ,$logData | Should -BeOfType [System.Collections.ArrayList]
             $logData | Should -BeOfType [string]
         }
     }
     Context 'Get-WinRMHotfixInfo'{
-        function Get-Hotfix {
-            return $winRmHotfix
+        function Invoke-Command {
+            return $hotFixList
         }
         $testCases = @(
             @{
                 psVersionInfo = [PSCustomObject]@{ps_version_major = 3}
-                winRmHotfix = $true
+                hotfixList = @(
+                    [PSCustomObject]@{hotfixId = 'KB0000001'},
+                    [PSCustomObject]@{hotfixId = 'KB0000002'},
+                    [PSCustomObject]@{hotfixId = 'KB2842230'}
+                    )
+                invocationError = $false
                 expected = $true
             }
             @{
                 psVersionInfo = [PSCustomObject]@{ps_version_major = 3}
-                winRmHotfix = $null
+                hotfixList = @(
+                    [PSCustomObject]@{hotfixId = 'KB0000001'},
+                    [PSCustomObject]@{hotfixId = 'KB0000002'}
+                    )
+                invocationError = $false
                 expected = $false
             }
             @{
                 psVersionInfo =[PSCustomObject]@{ps_version_major = 5}
-                winRmHotfix = $false
+                invocationError = $false
                 expected = $true
+            }
+            @{
+                psVersionInfo = [PSCustomObject]@{ps_version_major = 3}
+                hotfixList = @(
+                    [PSCustomObject]@{hotfixId = 'KB0000001'},
+                    [PSCustomObject]@{hotfixId = 'KB0000002'},
+                    [PSCustomObject]@{hotfixId = 'KB2842230'}
+                    )
+                invocationError = $true
+                expected = 'unknown'
             }
         )
         
-        It 'ensures WinRM hotfix status is <expected> for <psVersionInfo> and hotfix object is <winRmHotfix>' -TestCases $testCases {
-            param ($psVersionInfo, $winRmHotfix, $expected)
+        It 'ensures WinRM hotfix status is <expected> for <psVersionInfo>, hotfix list <hotfixList> and invocation error is <invocationError>' -TestCases $testCases {
+            param ($psVersionInfo, $hotfixList, $invocationError, $expected)
 
-            Mock Get-Hotfix{
-                return $winRmHotfix
+            if($invocationError){
+                Mock Invoke-Command {
+                    throw
+                }
             }
-            $winRmHotfixInfo = Get-WinRMHotfixInfo $psVersionInfo
+            else{
+                Mock Invoke-Command {
+                    $hotFixList
+                }
+            }
+            $winRmHotfixInfo = Get-WinRMHotfixInfo -psVersionInfo $psVersionInfo
             $winRmHotfixInfo.hotfix_status_ok | Should -Be $expected
         }
+
+        It 'ensures logData is an arrayList of strings when invocation error state is <invocationError>' -TestCases $testCases {
+            param ($psVersionInfo, $hotfixList, $invocationError)
+
+            if($invocationError){
+                Mock Invoke-Command {
+                    throw
+                }
+            }
+            else{
+                Mock Invoke-Command {
+                    $hotFixList
+                }
+            }
+
+            $winRmHotfixInfo, $logData = Get-WinRmHotfixInfo -psVersionInfo $psVersionInfo
+            ,$logData | Should -BeOfType [System.Collections.ArrayList]
+            $logData | Should -BeOfType [string]
+        }
     }
-
-
 }
