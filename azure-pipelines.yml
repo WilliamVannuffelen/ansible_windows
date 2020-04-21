@@ -5,6 +5,7 @@
 
 trigger:
 - master
+- runspaces
 
 pool:
   vmImage: 'windows-2019'
