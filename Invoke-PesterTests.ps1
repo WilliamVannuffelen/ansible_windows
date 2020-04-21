@@ -7,7 +7,7 @@ $params = @{
     script = "./win_scripts/*.Tests.ps1"
     outputFile = "./pester_test_results.xml"
     outputFormat = "NUnitXML"
-    codeCoverage = "./win_scripts/*.ps1"
+    codeCoverage = "./win_scripts/*.ps*1"
     codeCoverageOutputFile = "./pester_coverage_results.xml"
     codeCoverageOutputFileFormat = "JaCoCo"
 }
