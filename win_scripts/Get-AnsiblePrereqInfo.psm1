@@ -213,8 +213,3 @@ function Get-WinRmHotfixInfo{
 
     return $winRmHotfixInfo, $logData
 }
-
-$osVersionInfo, $logData = Get-OSVersionInfo
-$psVersionInfo, $logData = Get-PSVersionInfo $psVersion
-$dotNetVersionInfo, $logData = Get-DotNetVersionInfo
-$winRmHotfixInfo, $logData = Get-WinRMHotfixInfo $psVersionInfo
