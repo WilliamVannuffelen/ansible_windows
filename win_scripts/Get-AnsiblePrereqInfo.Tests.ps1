@@ -60,8 +60,6 @@ InModuleScope $moduleName {
                 }
 
                 $osVersionInfo, $logData = Get-OSVersionInfo -psSession "test" -ComputerName "test"
-                $osversioninfo | select os_version_name,os_version,os_sp_version,os_compatible | out-file '/home/wvannuffelen/ansible/development/ansible_windows/win_scripts/temp.txt' -append
-                $logData | out-file '/home/wvannuffelen/ansible/development/ansible_windows/win_scripts/temp.txt' -append
                 $osVersionInfo.os_compatible | Should -Be $expected
             }
 
