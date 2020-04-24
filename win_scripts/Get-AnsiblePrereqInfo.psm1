@@ -71,7 +71,7 @@ function Connect-PsSessionCustom{
     return $psSessionObject, $logData
 }
 
-function Get-OSVersionInfo{
+function Get-OsVersionInfo{
     [cmdletBinding()]
     param(
         [object] $psSession,
@@ -80,7 +80,7 @@ function Get-OSVersionInfo{
     $logData = New-Object System.Collections.ArrayList
 
     try{
-        $osWmiObject = Invoke-Command -Session $psSession -ScriptBlock {Get-WMIObject -Class Win32_OperatingSystem -ErrorAction Stop} -ErrorAction Stop
+        $osCimInstace = Invoke-Command -Session $psSession -ScriptBlock {Get-CimInstance -ClassName Win32_OperatingSystem -OperationTimeOutSec 60 -ErrorAction Stop} -ErrorAction Stop
         [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Queried Win32_OperatingSystem.")
     }
     catch{
@@ -96,7 +96,7 @@ function Get-OSVersionInfo{
         return $osVersionInfo, $logData
     }
     
-    $osVersionInfo = $osWmiObject |
+    $osVersionInfo = $osCimInstance |
         Select-Object   @{Name="osVersionName";       Expression={$_.caption}},
                         @{Name="osVersion";           Expression={$_.version}},
                         @{Name="osSpVersion";         Expression={$_.servicePackMajorVersion}},
@@ -248,7 +248,7 @@ function Get-WinRmHotfixInfo{
     }
     else{
         try{
-            $hotfixList = Invoke-Command -Session $psSession -ScriptBlock {Get-CimInstance -ClassName Win32_QuickFixEngineering -ErrorAction Stop} -ErrorAction Stop
+            $hotfixList = Invoke-Command -Session $psSession -ScriptBlock {Get-CimInstance -ClassName Win32_QuickFixEngineering -OperationTimeOutSec 60 -ErrorAction Stop} -ErrorAction Stop
             [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Queried Win32_QuickFixEngineering.")
         }
         catch{

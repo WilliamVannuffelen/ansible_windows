@@ -126,7 +126,7 @@ InModuleScope $moduleName {
             }
             $testCases = @(
                 @{
-                    osWmiObject = [psCustomObject]@{
+                    osCimInstance = [psCustomObject]@{
                         caption = 'Microsoft Windows Server 2012 Standard'
                         version = '6.2.9200'
                         servicePackMajorVersion = 0
@@ -135,7 +135,7 @@ InModuleScope $moduleName {
                     expected = $true
                 }
                 @{
-                    osWmiObject = [psCustomObject]@{
+                    osCimInstance = [psCustomObject]@{
                         caption = 'Microsoft Windows Server 2008 R2 Standard'
                         version = '6.1.7601'
                         servicePackMajorVersion = 1
@@ -144,7 +144,7 @@ InModuleScope $moduleName {
                     expected = $true
                 }
                 @{
-                    osWmiObject = [psCustomObject]@{
+                    osCimInstance = [psCustomObject]@{
                         caption = 'Windows Server 2008 Standard without Hyper-V'
                         version = '6.0.0001'
                         servicePackMajorVersion = 1
@@ -153,14 +153,14 @@ InModuleScope $moduleName {
                     expected = $false
                 }
                 @{
-                    osWmiObject = $null
+                    osCimInstance = $null
                     invocationError = $true
                     expected = 'unknown'
                 }
             )
 
             It 'ensures OS compatibility is <expected> for OS <osWmiObject> and invocation error state is <invocationError>' -TestCases $testCases {
-                param ($osWmiObject, $invocationError, $expected)
+                param ($osCimInstance, $invocationError, $expected)
 
                 if($invocationError -eq $true){
                     Mock Invoke-Command {
@@ -169,7 +169,7 @@ InModuleScope $moduleName {
                 }
                 else{
                     Mock Invoke-Command {
-                        return $osWmiObject
+                        return $osCimInstance
                     }
                 }
 
@@ -178,7 +178,7 @@ InModuleScope $moduleName {
             }
 
             It 'ensures logData is an arrayList of strings when invocation error state is <invocationError>' -TestCases $testCases[0,3] {
-                param ($osWmiObject, $invocationError)
+                param ($osCimInstance, $invocationError)
 
                 if($invocationError){
                     Mock Invoke-Command {
@@ -187,7 +187,7 @@ InModuleScope $moduleName {
                 }
                 else{
                     Mock Invoke-Command {
-                        return $osWmiObject
+                        return $osCimInstance
                     }
                 }
                 
