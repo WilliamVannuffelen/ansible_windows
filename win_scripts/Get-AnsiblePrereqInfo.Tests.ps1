@@ -6,6 +6,63 @@ Import-Module -Name "$modulePath.psm1" -Force -ErrorAction Stop
 
 InModuleScope $moduleName {
     Describe 'Get-AnsiblePrereqInfo'{
+        Context 'Get-ServerIpAddress' {
+            function DotNet-GetHostByName {
+                return $ipHostEntry
+            }
+
+            $testCases = @(
+                @{
+                    ipHostEntry = [psCustomObject]@{
+                        hostName = 'exists in DNS'
+                        addressList = @('2607:f8b0:4000:804::2003', '172.217.6.163')
+                    }
+                    invocationError = $false
+                    expected = [string]'2607:f8b0:4000:804::2003, 172.217.6.163'
+                }
+                @{
+                    ipHostEntry = [psCustomObject]@{
+                        hostName = "doesn't exist in DNS"
+                        addressList = $null
+                    }
+                    invocationError = $false
+                    expected = [string]'unknown'
+                }
+                @{
+                    ipHostEntry = [psCustomObject]@{
+                        hostname = "exists in DNS"
+                        addressList = @('2607:f8b0:4000:804::2003', '172.217.6.163')
+                    }
+                    invocationError = $true
+                    expected = [string]'unknown'
+                }
+            )
+
+            It 'ensures ipAddress is <expected> for <ipHostEntry> and invocation error is <invocationError>' -TestCases $testCases {
+                param($ipHostEntry, $invocationError, $expected)
+
+                if($ipHostEntry.hostName -like "doesn*"){
+                    $exception = New-Object System.Management.Automation.MethodInvocationException
+                    Mock DotNet-GetHostByName {
+                        throw $exception
+                    }
+                }
+                elseif($invocationError -eq $true){
+                    Mock DotNet-GetHostByName {
+                        throw
+                    }
+                }
+                else{
+                    Mock DotNet-GetHostByName {
+                        return $ipHostEntry
+                    }
+                }
+
+                $ipAddress, $logData = Get-ServerIpAddress
+                $ipAddress | Should -Be $expected
+            }
+        }
+
         Context 'Connect-PsSessionCustom' {
             function New-PsSession {
                 return $psSession

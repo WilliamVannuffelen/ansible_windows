@@ -2,6 +2,43 @@ function Get-TimeStamp {
     return Get-Date -f "yyyy-MM-dd HH:mm:ss -"
 }
 
+function Get-ServerIpAddress{
+    [cmdletBinding()]
+    param(
+        [string] $computerName
+    )
+    $logData = New-Object System.Collections.ArrayList
+
+    # wrap method in function for unit testing
+    function DotNet-GetHostByName ($computerName){
+        return [System.Net.Dns]::GetHostByName($computerName)
+    }
+
+    try{
+        [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Querying DNS for IP address.")
+        $ipHostEntry = DotNet-GetHostByName $computerName
+        $ipAddress = ($ipHostEntry.addressList -join ', ')
+        [void]$logData.Add("$(Get-TimeStamp) INFO: $computername - Queried DNS for IP address.")
+    }
+    catch [System.Management.Automation.MethodInvocationException]{
+        if($_.exception.errorRecord -match 'Name or service not known"$'){
+            $ipAddress = 'unknown'
+            [void]$logData.Add("$(Get-TimeStamp) INFO: $computername - Failed to get IP address. FQDN not known in DNS.")
+        }
+        else{
+            $ipAddress = 'unknown'
+            [void]$logData.Add("$(Get-TimeStamp) ERROR: $computername - Failed to get IP address")
+            [void]$logData.Add($_.exception.message)
+        }
+    }
+    catch{
+        $ipAddress = 'unknown'
+        [void]$logData.Add("$(Get-TimeStamp) ERROR: $computername - Failed to get IP address")
+        [void]$logData.Add($_.exception.message)
+    }
+    return $ipAddress, $logData
+}
+
 function Connect-PsSessionCustom{
     [cmdletBinding()]
     param(
