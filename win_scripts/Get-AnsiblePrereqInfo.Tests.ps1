@@ -6,13 +6,70 @@ Import-Module -Name "$modulePath.psm1" -Force -ErrorAction Stop
 
 InModuleScope $moduleName {
     Describe 'Get-AnsiblePrereqInfo'{
+        Context 'Connect-PsSessionCustom' {
+            function New-PsSession {
+                return $psSession
+            }
+            $testCases = @(
+                @{
+                    psSession = $null
+                    invocationError = $true
+                    expected = $false
+                }
+                @{
+                    psSession = [psCustomObject]@{
+                        id = 1
+                    }
+                    invocationError = $false
+                    expected = $true
+                }
+            )
+
+            It 'ensures PS session status is <expected> for invocation error is <invocationError>' -TestCases $testCases {
+                param($psSession, $invocationError, $expected)
+
+                if($invocationError -eq $true){
+                    Mock New-PsSession {
+                        throw
+                    }
+                }
+                else{
+                    Mock New-PsSession {
+                        return $psSession
+                    }
+                }
+                
+                $psSessionObject, $logData = Connect-PsSessionCustom -ComputerName "test"
+                $psSessionObject.psSessionOk | Should -Be $expected
+            }
+
+            It 'ensures logData is an arrayList of strings when invocation error state is <invocationError>' -TestCases $testCases[0,3] {
+                param ($psSession, $invocationError)
+
+                if($invocationError){
+                    Mock New-PsSession {
+                        throw
+                    }
+                }
+                else{
+                    Mock Invoke-Command {
+                        return $psSession
+                    }
+                }
+                
+                $psSessionObject, $logData = Get-OSVersionInfo
+                ,$logData | Should -BeOfType [System.Collections.ArrayList]
+                $logData | Should -BeOfType [string]
+            }
+        }
+
         Context 'Get-OSVersionInfo'{
             function Invoke-Command {
                 return $osVersionInfo
             }
             $testCases = @(
                 @{
-                    osWmiObject = [PSCustomObject]@{
+                    osWmiObject = [psCustomObject]@{
                         caption = 'Microsoft Windows Server 2012 Standard'
                         version = '6.2.9200'
                         servicePackMajorVersion = 0
@@ -21,7 +78,7 @@ InModuleScope $moduleName {
                     expected = $true
                 }
                 @{
-                    osWmiObject = [PSCustomObject]@{
+                    osWmiObject = [psCustomObject]@{
                         caption = 'Microsoft Windows Server 2008 R2 Standard'
                         version = '6.1.7601'
                         servicePackMajorVersion = 1
@@ -30,7 +87,7 @@ InModuleScope $moduleName {
                     expected = $true
                 }
                 @{
-                    osWmiObject = [PSCustomObject]@{
+                    osWmiObject = [psCustomObject]@{
                         caption = 'Windows Server 2008 Standard without Hyper-V'
                         version = '6.0.0001'
                         servicePackMajorVersion = 1
@@ -163,7 +220,7 @@ InModuleScope $moduleName {
                     expected = $false
                 }
                 @{
-                    dotNetVersion = [PSCustomObject]@{
+                    dotNetVersion = [psCustomObject]@{
                         version = ([version]"4.7.03190")
                         release = 461814
                     }
@@ -171,7 +228,7 @@ InModuleScope $moduleName {
                     expected = $true
                 }
                 @{
-                    dotNetVersion = [PSCustomObject]@{
+                    dotNetVersion = [psCustomObject]@{
                         version = ([version]"4.7.03190")
                         release = 461814
                     }
@@ -234,35 +291,35 @@ InModuleScope $moduleName {
             }
             $testCases = @(
                 @{
-                    psVersionInfo = [PSCustomObject]@{ps_version_major = 3}
+                    psVersionInfo = [psCustomObject]@{ps_version_major = 3}
                     hotfixList = @(
-                        [PSCustomObject]@{hotfixId = 'KB0000001'},
-                        [PSCustomObject]@{hotfixId = 'KB0000002'},
-                        [PSCustomObject]@{hotfixId = 'KB2842230'}
+                        [psCustomObject]@{hotfixId = 'KB0000001'},
+                        [psCustomObject]@{hotfixId = 'KB0000002'},
+                        [psCustomObject]@{hotfixId = 'KB2842230'}
                         )
                     invocationError = $false
                     expected = $true
                 }
                 @{
-                    psVersionInfo = [PSCustomObject]@{ps_version_major = 3}
+                    psVersionInfo = [psCustomObject]@{ps_version_major = 3}
                     hotfixList = @(
-                        [PSCustomObject]@{hotfixId = 'KB0000001'},
-                        [PSCustomObject]@{hotfixId = 'KB0000002'}
+                        [psCustomObject]@{hotfixId = 'KB0000001'},
+                        [psCustomObject]@{hotfixId = 'KB0000002'}
                         )
                     invocationError = $false
                     expected = $false
                 }
                 @{
-                    psVersionInfo =[PSCustomObject]@{ps_version_major = 5}
+                    psVersionInfo =[psCustomObject]@{ps_version_major = 5}
                     invocationError = $false
                     expected = $true
                 }
                 @{
-                    psVersionInfo = [PSCustomObject]@{ps_version_major = 3}
+                    psVersionInfo = [psCustomObject]@{ps_version_major = 3}
                     hotfixList = @(
-                        [PSCustomObject]@{hotfixId = 'KB0000001'},
-                        [PSCustomObject]@{hotfixId = 'KB0000002'},
-                        [PSCustomObject]@{hotfixId = 'KB2842230'}
+                        [psCustomObject]@{hotfixId = 'KB0000001'},
+                        [psCustomObject]@{hotfixId = 'KB0000002'},
+                        [psCustomObject]@{hotfixId = 'KB2842230'}
                         )
                     invocationError = $true
                     expected = 'unknown'

@@ -2,6 +2,38 @@ function Get-TimeStamp {
     return Get-Date -f "yyyy-MM-dd HH:mm:ss -"
 }
 
+function Connect-PsSessionCustom{
+    [cmdletBinding()]
+    param(
+        [string] $computerName,
+        [psCredential] $domainCredentials
+    )
+    $logData = New-Object System.Collections.ArrayList
+
+    try{
+        $psSession = New-PsSession -computerName $computerName -Authentication Kerberos -Credential $domainCredentials -ErrorAction Stop
+        [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Started PS session (Kerberos).")
+    }
+    catch{
+        [void]$logData.Add("$(Get-Timestamp) ERROR: $computerName - Failed to start PS session (Kerberos).")
+        [void]$logData.Add($_.Exception.Message)
+
+        $psSessionObject = [psCustomObject]@{
+            psSessionOk = $false
+            psSession = $false
+        }
+
+        return $psSessionObject, $logData
+    }
+
+    $psSessionObject = [psCustomObject]@{
+        psSessionOk = $true
+        psSession = $psSession
+    }
+
+    return $psSessionObject, $logData
+}
+
 function Get-OSVersionInfo{
     [cmdletBinding()]
     param(
@@ -18,7 +50,7 @@ function Get-OSVersionInfo{
         [void]$logData.Add("$(Get-Timestamp) ERROR: $computerName - Failed to query Win32_OperatingSystem.")
         [void]$logData.Add($_.Exception.Message)
 
-        $osVersionInfo = [PSCustomObject]@{
+        $osVersionInfo = [psCustomObject]@{
             os_version_name = 'unknown'
             os_version = 'unknown'
             os_sp_version = 'unknown'
@@ -71,7 +103,7 @@ function Get-PSVersionInfo{
         [void]$logData.Add($_.Exception.Message)
 
         # if error in query, report
-        $psVersionInfo = [PSCustomObject]@{
+        $psVersionInfo = [psCustomObject]@{
             ps_version_simple = 'unknown'
             ps_version_major = 'unknown'
             ps_compatible = 'unknown'
@@ -81,7 +113,7 @@ function Get-PSVersionInfo{
 
     # if no error in query, but nothing returned -> PS is outdated
     if($null -eq $psVersion){
-        $psVersionInfo = [PSCustomObject]@{
+        $psVersionInfo = [psCustomObject]@{
             ps_version_simple = '1.0'
             ps_version_major = 1
             ps_compatible = $false
@@ -124,7 +156,7 @@ function Get-DotNetVersionInfo{
     catch [System.Management.Automation.ItemNotFoundException] {
         [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Registry path does not exist, missing or outdated .NET version.")
 
-        $dotNetVersionInfo = [PSCustomObject]@{
+        $dotNetVersionInfo = [psCustomObject]@{
             dotnet_version = 'n/a'
             dotnet_release = 'n/a'
             dotnet_compatible = $false
@@ -135,7 +167,7 @@ function Get-DotNetVersionInfo{
         [void]$logData.Add("$(Get-Timestamp) ERROR: $computerName - Failed to query registry for .NET version info.")
         [void]$logData.Add($_.Exception.Message)
 
-        $dotNetVersionInfo = [PSCustomObject]@{
+        $dotNetVersionInfo = [psCustomObject]@{
             dotnet_version = 'unknown'
             dotnet_release = 'unknown'
             dotnet_compatible = 'unknown'
@@ -168,7 +200,7 @@ function Get-WinRmHotfixInfo{
     
     # skip KB check if PS version > 3
     if($psVersionInfo.ps_version_major -ne 3){
-        $winRmHotfixInfo = [PSCustomObject]@{
+        $winRmHotfixInfo = [psCustomObject]@{
             hotfix_required   = $false
             hotfix_installed  = $false
             hotfix_status_ok  = $true
@@ -186,7 +218,7 @@ function Get-WinRmHotfixInfo{
             [void]$logData.Add("$(Get-Timestamp) ERROR: $computerName - Failed to query Win32_QuickFixEngineering.")
             [void]$logData.Add($_.Exception.Message)
 
-            $winRmHotfixInfo = [PSCustomObject]@{
+            $winRmHotfixInfo = [psCustomObject]@{
                 hotfix_required = $true
                 hotfix_installed = 'unknown'
                 hotfix_status_ok = 'unknown'
@@ -204,7 +236,7 @@ function Get-WinRmHotfixInfo{
             $winRmHotfixOk = $false
         }
 
-        $winRmHotfixInfo = [PSCustomObject]@{
+        $winRmHotfixInfo = [psCustomObject]@{
             hotfix_required   = $true
             hotfix_installed  = $winRmHotfixInstalled
             hotfix_status_ok  = $winRmHotfixOk
