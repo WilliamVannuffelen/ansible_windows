@@ -51,19 +51,19 @@ function Get-OSVersionInfo{
         [void]$logData.Add($_.Exception.Message)
 
         $osVersionInfo = [psCustomObject]@{
-            os_version_name = 'unknown'
-            os_version = 'unknown'
-            os_sp_version = 'unknown'
-            os_compatible = 'unknown'
+            osVersionName = 'unknown'
+            osVersion = 'unknown'
+            osSpVersion = 'unknown'
+            osCompatible = 'unknown'
         }
         return $osVersionInfo, $logData
     }
     
     $osVersionInfo = $osWmiObject |
-        Select-Object   @{Name="os_version_name";       Expression={$_.caption}},
-                        @{Name="os_version";            Expression={$_.version}},
-                        @{Name="os_sp_version";         Expression={$_.servicePackMajorVersion}},
-                        @{Name="os_compatible";         Expression={
+        Select-Object   @{Name="osVersionName";       Expression={$_.caption}},
+                        @{Name="osVersion";           Expression={$_.version}},
+                        @{Name="osSpVersion";         Expression={$_.servicePackMajorVersion}},
+                        @{Name="osCompatible";        Expression={
                             # windows server 2008 --> needs SP 2
                             if($_.version.StartsWith('6.0')){
                                 switch ($_.servicePackMajorVersion){
@@ -104,9 +104,9 @@ function Get-PSVersionInfo{
 
         # if error in query, report
         $psVersionInfo = [psCustomObject]@{
-            ps_version_simple = 'unknown'
-            ps_version_major = 'unknown'
-            ps_compatible = 'unknown'
+            psVersionSimple = 'unknown'
+            psVersionMajor = 'unknown'
+            psCompatible = 'unknown'
             }
         return $psVersionInfo, $logData
     }
@@ -114,9 +114,9 @@ function Get-PSVersionInfo{
     # if no error in query, but nothing returned -> PS is outdated
     if($null -eq $psVersion){
         $psVersionInfo = [psCustomObject]@{
-            ps_version_simple = '1.0'
-            ps_version_major = 1
-            ps_compatible = $false
+            psVersionSimple = '1.0'
+            psVersionMajor = 1
+            psCompatible = $false
         }
         [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - psVersionTable does not exist. Outdated Powershell version.")
 
@@ -124,9 +124,9 @@ function Get-PSVersionInfo{
     }
 
     $psVersionInfo = $psVersion |
-        Select-Object   @{Name="ps_version_simple";     Expression={"$($_.major).$($_.minor)"}},
-                        @{Name="ps_version_major";      Expression={$_.major}},
-                        @{Name="ps_compatible";         Expression={
+        Select-Object   @{Name="psVersionSimple";     Expression={"$($_.major).$($_.minor)"}},
+                        @{Name="psVersionMajor";      Expression={$_.major}},
+                        @{Name="psCompatible";         Expression={
                             switch ($_.major){
                                 {@(3,4,5) -contains $_} {$true}
                                 default {$false}
@@ -157,9 +157,9 @@ function Get-DotNetVersionInfo{
         [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Registry path does not exist, missing or outdated .NET version.")
 
         $dotNetVersionInfo = [psCustomObject]@{
-            dotnet_version = 'n/a'
-            dotnet_release = 'n/a'
-            dotnet_compatible = $false
+            dotNetVersion = 'n/a'
+            dotNetRelease = 'n/a'
+            dotNetCompatible = $false
         }
         return $dotNetVersionInfo, $logData
     }
@@ -168,17 +168,17 @@ function Get-DotNetVersionInfo{
         [void]$logData.Add($_.Exception.Message)
 
         $dotNetVersionInfo = [psCustomObject]@{
-            dotnet_version = 'unknown'
-            dotnet_release = 'unknown'
-            dotnet_compatible = 'unknown'
+            dotNetVersion = 'unknown'
+            dotNetRelease = 'unknown'
+            dotNetCompatible = 'unknown'
         }
         return $dotNetVersionInfo, $logData
     }
 
     $dotNetVersionInfo = $dotNetVersion |
-        Select-Object   @{Name="dotnet_version";    Expression={$_.version}},
-                        @{Name="dotnet_release";    Expression={$_.release}},
-                        @{Name="dotnet_compatible"; Expression={
+        Select-Object   @{Name="dotNetVersion";    Expression={$_.version}},
+                        @{Name="dotNetRelease";    Expression={$_.release}},
+                        @{Name="dotNetCompatible"; Expression={
                             switch ($_.release){
                                 {$_ -ge $dotNetMinRelease} {$true}
                                 default {$false}
@@ -199,11 +199,11 @@ function Get-WinRmHotfixInfo{
     $logData = New-Object System.Collections.ArrayList
     
     # skip KB check if PS version > 3
-    if($psVersionInfo.ps_version_major -ne 3){
+    if($psVersionInfo.psVersionMajor -ne 3){
         $winRmHotfixInfo = [psCustomObject]@{
-            hotfix_required   = $false
-            hotfix_installed  = $false
-            hotfix_status_ok  = $true
+            hotfixRequired   = $false
+            hotfixInstalled  = $false
+            hotfixStatusOk  = $true
         }
         [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - PS version is not 3 - skipping KB check.")
 
@@ -219,9 +219,9 @@ function Get-WinRmHotfixInfo{
             [void]$logData.Add($_.Exception.Message)
 
             $winRmHotfixInfo = [psCustomObject]@{
-                hotfix_required = $true
-                hotfix_installed = 'unknown'
-                hotfix_status_ok = 'unknown'
+                hotfixRequired = $true
+                hotfixInstalled = 'unknown'
+                hotfixStatusOk = 'unknown'
             }
 
             return $winRmHotfixInfo, $logData
@@ -237,9 +237,9 @@ function Get-WinRmHotfixInfo{
         }
 
         $winRmHotfixInfo = [psCustomObject]@{
-            hotfix_required   = $true
-            hotfix_installed  = $winRmHotfixInstalled
-            hotfix_status_ok  = $winRmHotfixOk
+            hotfixRequired   = $true
+            hotfixInstalled  = $winRmHotfixInstalled
+            hotfixStatusOk  = $winRmHotfixOk
         }
     }
 

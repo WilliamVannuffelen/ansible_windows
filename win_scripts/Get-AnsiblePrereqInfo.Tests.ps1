@@ -117,7 +117,7 @@ InModuleScope $moduleName {
                 }
 
                 $osVersionInfo, $logData = Get-OSVersionInfo -psSession "test" -ComputerName "test"
-                $osVersionInfo.os_compatible | Should -Be $expected
+                $osVersionInfo.osCompatible | Should -Be $expected
             }
 
             It 'ensures logData is an arrayList of strings when invocation error state is <invocationError>' -TestCases $testCases[0,3] {
@@ -187,7 +187,7 @@ InModuleScope $moduleName {
                 }
 
                 $psVersionInfo, $logData = Get-PSVersionInfo
-                $psVersionInfo.ps_compatible | Should -Be $expected
+                $psVersionInfo.psCompatible | Should -Be $expected
             }
 
             It 'ensures logData is an arrayList of strings when invocation error state is <invocationError>' -TestCases $testCases[0,3,4] {
@@ -257,7 +257,7 @@ InModuleScope $moduleName {
                     }
                 }
             $dotNetVersionInfo, $logData = Get-DotNetVersionInfo
-            $dotNetVersionInfo.dotnet_compatible | Should -Be $expected
+            $dotNetVersionInfo.dotNetCompatible | Should -Be $expected
             }
 
             It 'ensures logData is an arrayList of strings when invocation error state is <invocationError>' -TestCases $testCases {
@@ -291,7 +291,7 @@ InModuleScope $moduleName {
             }
             $testCases = @(
                 @{
-                    psVersionInfo = [psCustomObject]@{ps_version_major = 3}
+                    psVersionInfo = [psCustomObject]@{psVersionMajor = 3}
                     hotfixList = @(
                         [psCustomObject]@{hotfixId = 'KB0000001'},
                         [psCustomObject]@{hotfixId = 'KB0000002'},
@@ -301,7 +301,7 @@ InModuleScope $moduleName {
                     expected = $true
                 }
                 @{
-                    psVersionInfo = [psCustomObject]@{ps_version_major = 3}
+                    psVersionInfo = [psCustomObject]@{psVersionMajor = 3}
                     hotfixList = @(
                         [psCustomObject]@{hotfixId = 'KB0000001'},
                         [psCustomObject]@{hotfixId = 'KB0000002'}
@@ -310,12 +310,12 @@ InModuleScope $moduleName {
                     expected = $false
                 }
                 @{
-                    psVersionInfo =[psCustomObject]@{ps_version_major = 5}
+                    psVersionInfo =[psCustomObject]@{psVersionMajor = 5}
                     invocationError = $false
                     expected = $true
                 }
                 @{
-                    psVersionInfo = [psCustomObject]@{ps_version_major = 3}
+                    psVersionInfo = [psCustomObject]@{psVersionMajor = 3}
                     hotfixList = @(
                         [psCustomObject]@{hotfixId = 'KB0000001'},
                         [psCustomObject]@{hotfixId = 'KB0000002'},
@@ -340,7 +340,7 @@ InModuleScope $moduleName {
                     }
                 }
                 $winRmHotfixInfo = Get-WinRMHotfixInfo -psVersionInfo $psVersionInfo
-                $winRmHotfixInfo.hotfix_status_ok | Should -Be $expected
+                $winRmHotfixInfo.hotfixStatusOk | Should -Be $expected
             }
 
             It 'ensures logData is an arrayList of strings when invocation error state is <invocationError>' -TestCases $testCases {
