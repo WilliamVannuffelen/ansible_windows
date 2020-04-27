@@ -74,7 +74,7 @@ function Invoke-Checks {
     $resultsDict = [System.Collections.Concurrent.ConcurrentDictionary[string,object]]::New()
     
     $serverList | ForEach-Object -Parallel {
-        class resultsObject {
+        class resultObject {
             [string] $computerName
             [string] $ipAddress
             [boolean] $psSessionOk
@@ -84,11 +84,10 @@ function Invoke-Checks {
             [string] $psVersion
             [boolean] $psCompatible
             [boolean] $winRmHotfixStatusOk
-            [string] $dotNetReleease
+            [string] $dotNetRelease
             [boolean] $dotNetCompatible
             [system.collections.arrayList] $logData
         }
-
 
         function Get-TimeStamp {
             return Get-Date -f "yyyy-MM-dd HH:mm:ss -"
@@ -108,13 +107,14 @@ function Invoke-Checks {
         catch{
             [void]$logData.Add("$(Get-Timestamp) ERROR: $computerName - Failed to import module in runspace. All checks will be skipped.")
             
-            $resultsObj = New-Object -TypeName resultsObject -Property @{
+            $resultObj = New-Object -TypeName resultObject -Property @{
                 computerName = $computerName
                 logData = $logData
             }
-            [void]($resultsObj.psObject.properties | Where-Object {$null -eq $_.value -or $_.value -eq $false}).foreach{$_.value = 'unknown'}
+            # populate empty properties with 'unknown' for report formatting
+            [void]($resultObj.psObject.properties | Where-Object {$null -eq $_.value}).foreach{$_.value = 'unknown'}
 
-            [void]$resultsDict.TryAdd($computerName, $resultsObj)
+            [void]$resultsDict.TryAdd($computerName, $resultObj)
             continue
         }
 
@@ -153,7 +153,7 @@ function Invoke-Checks {
             $dotNetVersionInfo, $logDataEntry = Get-DotNetVersionInfo -psSession $psSession -computerName $computerName
             [void]$logData.AddRange($logDataEntry)
 
-            $resultObj = [psCustomObject]@{
+            $resultObj = New-Object -TypeName resultObject -Property @{
                 computerName = $computerName
                 ipAddress = $ipAddress
                 psSessionOk = $psSessionObject.psSessionOk
@@ -167,25 +167,20 @@ function Invoke-Checks {
                 dotNetCompatible = $dotNetVersionInfo.dotNetCompatible
                 logData = $logData
             }
+
             Remove-PsSession -id $psSession.id
         }
         else{
             [void]$logData.Add("$(Get-Timestamp) ERROR: $computerName - Unable to establish a PS session. All checks will be skipped.")
 
-            $resultObj = [psCustomObject]@{
+            $resultObj = New-Object -TypeName resultObject -Property @{
                 computerName = $computerName
                 ipAddress = $ipAddress
                 psSessionOk = $false
-                osVersion = 'unknown'
-                osSpVersion = 'unknown'
-                osCompatible = 'unknown'
-                psVersion = 'unknown'
-                psCompatible = 'unknown'
-                winRmHotFixStatusOk = 'unknown'
-                dotNetRelease = 'unknown'
-                dotNetCompatible = 'unknown'
                 logData = $logData
             }
+            # populate empty properties with 'unknown' for report formatting
+            [void]($resultObj.psObject.properties | Where-Object {$null -eq $_.value}).foreach{$_.value = 'unknown'}
         }
         $endTime = Get-Date
         $timeDelta = $endTime - $startTime
