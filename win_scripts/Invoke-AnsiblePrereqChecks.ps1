@@ -193,9 +193,111 @@ function Invoke-Checks {
     return $resultsDict
 }
 
+function New-HtmlReport{
+    param(
+        $resultObj,
+        $reportFile
+    )
+    "$(Get-Timestamp) INFO: Building HTML report of results." | Tee-Object -FilePath $logFile -Append | Out-Host
+    # calculated properties to keep useful data and output in human-readable-friendly format
+    $results = $resultObj | 
+        Select-Object   @{Name='computerName';          Expression={$_.computerName}},
+                        @{Name='ipAddress';             Expression={$_.ipAddress}},
+                        @{Name='psSessionOk';           Expression={$_.psSessionOk}},
+                        @{Name='osVersion';             Expression={$_.osVersion}},
+                        @{Name='servicePackVersion';    Expression={$_.osSpVersion}},
+                        @{Name='osCompatible';          Expression={$_.osCompatible}},
+                        @{Name='psVersion';             Expression={$_.psVersion}},
+                        @{Name='psCompatible';          Expression={$_.psCompatible}},
+                        @{Name='winRmHotfixStatusOk';   Expression={$_.winRmHotfixStatusOk}},
+                        @{Name='dotNetRelease';         Expression={$_.dotNetRelease}},
+                        @{Name='dotNetCompatible';      Expression={$_.dotNetCompatible}}
+    
+    # HTML framework and CSS for report output
+    $htmlParams = @{
+        PostContent = "<p class='footer'>Generated on $(get-date -format 'yyyy-MM-dd HH:mm:ss')</p>"
+        head = @"
+ <Title>Ansible - Windows target system prerequisite checks - $(get-date -format 'yyyy-MM-dd')</Title>
+<style>
+body { background-color:#E5E4E2;
+       font-family:Monospace;
+       font-size:11pt; }
+table { border-collapse: collapse;}
+td, th { padding: 1px 1;
+         border:1px solid black; 
+         border-collapse:collapse;
+         white-space:pre; }
+th { font-weight: bold;
+     color:white;
+     background-color:black; }
+table, tr, td, th { padding: 5px; margin: 0px ;white-space:pre; }
+tr {
+ border: solid;
+ border-width: 3px 0;
+ }
+tr:nth-child(odd) {background-color: lightgray}
+table { width:95%;margin-left:5px; margin-bottom:20px;}
+h2 {
+ font-family:Tahoma;
+ color:#6D7B8D;
+}
+.error {
+ background-color: red; 
+ }
+.success {
+ color: green;
+ }
+.footer 
+{ color:green; 
+  margin-left:10px; 
+  font-family:Tahoma;
+  font-size:8pt;
+  font-style:italic;
+}
+</style>
+"@
+    }
+
+    # convert results array to HTML fragment, cast to XML to dynamically add HTML classes used by CSS
+    [xml]$htmlData = $results | ConvertTo-Html -Fragment
+    # loop over rows
+    for($i=1; $i -le $htmlData.table.tr.count -1; $i++){
+        # loop over columns
+        for($y = 0; $y -le $htmlData.table.tr[$i].td.count -1; $y++){
+            # if column value is $false or 'unknown', append error class for CSS
+            if($htmlData.table.tr[$i].td[$y] -eq $false -or $htmlData.table.tr[$i].td[$y] -eq 'unknown'){
+                $class = $htmlData.createAttribute("class")
+                $class.value = 'error'
+                [void]$htmlData.table.tr[$i].childNodes[$y].attributes.append($class)
+            }
+            # if column value is $true, append success class for CSS
+            elseif($htmlData.table.tr[$i].td[$y] -eq $true){
+                $class = $htmlData.createAttribute("class")
+                $class.value = 'success'
+                [void]$htmlData.table.tr[$i].childNodes[$y].attributes.append($class)
+            }
+        }
+    }
+    $htmlParams.Add('body', $htmlData.innerXml)
+    
+    try{
+        ConvertTo-Html @htmlParams | Out-File $reportFile -ErrorAction Stop
+        "$(Get-Timestamp) INFO: Saved HTML report to $($reportFile)." | Tee-Object -FilePath $logFile -Append | Out-Host
+    }
+    catch{
+        "$(Get-Timestamp) ERROR: Failed to save HTML report." | Tee-Object -FilePath $logFile -Append | Out-Host
+        $_.Exception.Message | Tee-Object -FilePath $logFile -Append | Out-Host
+    }
+}
+
 
 Import-AnsibleChecksModule
 $serverList = Import-ServerList
 $results = Invoke-Checks -serverList $serverList -domainCredentials $domainCredentials
 $results.values.logData | Out-File $logFile -Append
 $results.values | Out-File $logFile -Append
+
+#$reportFile = "$psScriptRoot/Get-AnsiblePrereqInfo_$(Get-Date -Format 'yyyy-MM-dd_HHmm').html"
+$reportFile = "/var/www/html/index.nginx-debian.html"
+
+New-HtmlReport -resultObj $results.values -reportFile $reportFile
