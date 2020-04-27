@@ -41,7 +41,7 @@ function Get-TimeStamp {
 function Import-AnsibleChecksModule {
     try{
         Import-Module -Name "$psScriptRoot\Get-AnsiblePrereqInfo.psm1"
-        "$(Get-Timestamp) INFO: Imported module containing all checks." | Tee-Object -FilePath $logFile -Append | Out-Host
+        "$(Get-Timestamp) INFO: Successfully imported module containing all checks." | Tee-Object -FilePath $logFile -Append | Out-Host
     }
     catch{
         "$(Get-Timestamp) ERROR: Failed to import module containing all checks. Please ensure this file is present in the same location as Invoke-AnsiblePrereqChecks.ps1. The script will now terminate." | Tee-Object -FilePath $logFile -Append | Out-Host
@@ -74,7 +74,22 @@ function Invoke-Checks {
     $resultsDict = [System.Collections.Concurrent.ConcurrentDictionary[string,object]]::New()
     
     $serverList | ForEach-Object -Parallel {
-        Import-Module ".\Get-AnsiblePrereqInfo.psm1"
+        class resultsObject {
+            [string] $computerName
+            [string] $ipAddress
+            [boolean] $psSessionOk
+            [string] $osVersion
+            [string] $osSpVersion
+            [boolean] $osCompatible
+            [string] $psVersion
+            [boolean] $psCompatible
+            [boolean] $winRmHotfixStatusOk
+            [string] $dotNetReleease
+            [boolean] $dotNetCompatible
+            [system.collections.arrayList] $logData
+        }
+
+
         function Get-TimeStamp {
             return Get-Date -f "yyyy-MM-dd HH:mm:ss -"
         }
@@ -85,6 +100,23 @@ function Invoke-Checks {
         $resultsDict = $using:resultsDict
 
         $logData = [System.Collections.ArrayList]::New()
+
+        try{
+            Import-Module ".\Get-AnsiblePrereqInfo.psm1" -ErrorAction Stop
+            [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Successfully imported module in runspace.")
+        }
+        catch{
+            [void]$logData.Add("$(Get-Timestamp) ERROR: $computerName - Failed to import module in runspace. All checks will be skipped.")
+            
+            $resultsObj = New-Object -TypeName resultsObject -Property @{
+                computerName = $computerName
+                logData = $logData
+            }
+            [void]($resultsObj.psObject.properties | Where-Object {$null -eq $_.value -or $_.value -eq $false}).foreach{$_.value = 'unknown'}
+
+            [void]$resultsDict.TryAdd($computerName, $resultsObj)
+            continue
+        }
 
         # get IP address
         $ipAddress, $logDataEntry = Get-ServerIpAddress -computerName $computerName
@@ -159,7 +191,7 @@ function Invoke-Checks {
         $timeDelta = $endTime - $startTime
         [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Checks took $($timeDelta.totalSeconds) seconds to complete.")
 
-        $resultsDict.TryAdd($_, $resultObj)
+        [void]$resultsDict.TryAdd($computerName, $resultObj)
 
     }
 
@@ -171,3 +203,4 @@ Import-AnsibleChecksModule
 $serverList = Import-ServerList
 $results = Invoke-Checks -serverList $serverList -domainCredentials $domainCredentials
 $results.values.logData | Out-File $logFile -Append
+$results.values | Out-File $logFile -Append
