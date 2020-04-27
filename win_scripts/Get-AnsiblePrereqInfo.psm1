@@ -80,7 +80,7 @@ function Get-OsVersionInfo{
     $logData = New-Object System.Collections.ArrayList
 
     try{
-        $osCimInstace = Invoke-Command -Session $psSession -ScriptBlock {Get-CimInstance -ClassName Win32_OperatingSystem -OperationTimeOutSec 60 -ErrorAction Stop} -ErrorAction Stop
+        $osCimInstance = Invoke-Command -Session $psSession -ScriptBlock {Get-CimInstance -ClassName Win32_OperatingSystem -OperationTimeOutSec 60 -ErrorAction Stop} -ErrorAction Stop
         [void]$logData.Add("$(Get-Timestamp) INFO: $computerName - Queried Win32_OperatingSystem.")
     }
     catch{
