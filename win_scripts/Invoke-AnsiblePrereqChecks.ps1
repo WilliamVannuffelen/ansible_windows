@@ -3,15 +3,19 @@
 Invokes the Ansible prereq checks on target machines. Uses multiple threads.
 .DESCRIPTION
 Invokes the Ansible prereq checks on target machines. Uses multiple threads.
+Intended to be run from the Ansible node. Requires PS 7.
 .PARAMETER serverListFile
 A string of the full path of the plain text file containing all target servers to run the checks on.
 Default: "$psSscriptRoot\serverListFile.txt"
 .PARAMETER logFile
-stuff
+A string of the full path of the log file.
+Default: "$psScriptRoot/ansible_checks_logs_$(Get-Date -Format 'yyyy-MM-dd_hhmm').txt"
 .PARAMETER domainCredentials
 A psCredential object containing the domain credentials to be used for authentication.
 .EXAMPLE
+Invoke-AnsiblePrereqChecks -domainCredentials (Get-Credential) -logFile "~/ans_logs.txt"
 #>
+#Requires -Version 7
 [cmdletBinding()]
 param(
     [parameter(mandatory=$false)]
@@ -29,7 +33,15 @@ param(
     [psCredential] $domainCredentials,
 
     [parameter(mandatory=$false)]
-    [string] $logFile = "$psScriptRoot/logs_$(Get-Date -Format 'yyyy-MM-dd_HHmm').txt"
+    [validateScript({
+        if(Test-Path -Path (Split-Path $_ -Parent)){
+            $true
+        }
+        else{
+            throw "The parent directory of the specified logFile doesn't exist. Please provide a valid path."
+        }
+    })]
+    [string] $logFile = "$psScriptRoot/ansible_checks_logs_$(Get-Date -Format 'yyyy-MM-dd_HHmm').txt"
 )
 
 # generate timestamp for logging
@@ -40,7 +52,7 @@ function Get-TimeStamp {
 # test presence of custom module containing functions to be run on target systems
 function Import-AnsibleChecksModule {
     try{
-        Import-Module -Name "$psScriptRoot\Get-AnsiblePrereqInfo.psm1"
+        Import-Module -Name "$psScriptRoot\Get-AnsiblePrereqInfo.psm1" -ErrorAction Stop
         "$(Get-Timestamp) INFO: Successfully imported module containing all checks." | Tee-Object -FilePath $logFile -Append | Out-Host
     }
     catch{
@@ -73,6 +85,8 @@ function Invoke-Checks {
     )
     $resultsDict = [System.Collections.Concurrent.ConcurrentDictionary[string,object]]::New()
     
+    "$(Get-Timestamp) INFO: Starting checks. This may take a few minutes." | Tee-Object -FilePath $logFile -Append | Out-Host
+
     $serverList | ForEach-Object -Parallel {
         class resultObject {
             [string] $computerName
@@ -290,6 +304,8 @@ h2 {
     }
 }
 
+$startTime = Get-Date
+"$(Get-Timestamp) INFO: Script started." | Tee-Object -FilePath $logFile -Append | Out-Host
 
 Import-AnsibleChecksModule
 $serverList = Import-ServerList
@@ -301,3 +317,7 @@ $results.values | Out-File $logFile -Append
 $reportFile = "/var/www/html/index.nginx-debian.html"
 
 New-HtmlReport -resultObj $results.values -reportFile $reportFile
+
+$endTime = Get-Date
+$timeDelta = $endTime - $startTime
+"$(Get-Timestamp) INFO: Script stopped. Total runtime for all groups: $($timeDelta.ToString('hh\h\ mm\m\ ss\s'))" | Tee-Object -FilePath $logFile -Append | Out-Host
